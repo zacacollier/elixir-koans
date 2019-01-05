@@ -11,11 +11,17 @@ defmodule Koans.Mixfile do
 
   def application do
     [mod: {ElixirKoans, []},
-     applications: [:file_system, :logger]]
+     applications: applications(Mix.env)]
   end
 
+  defp applications(:test), do: applications(:prod) ++ [:briefly]
+  defp applications(_), do: [:file_system, :logger]
+
   defp deps do
-    [{:file_system, "~> 0.2"}]
+    [
+      {:file_system, "~> 0.2"},
+      {:briefly, "~> 0.3", only: [:test]}
+    ]
   end
 
   defp elixirc_path(:test), do: ["lib/", "test/support"]

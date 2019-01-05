@@ -1,26 +1,35 @@
 defmodule Watcher do
   use GenServer
 
-  def start_link() do
-    GenServer.start_link(__MODULE__, dirs: ["lib/koans"])
+  @default_arguments %{
+    folder_to_watch: "lib/koans",
+    handler: &Watcher.reload/1,
+    name: __MODULE__
+  }
+
+  def start_link(args \\ %{}) do
+    state = Map.merge(@default_arguments, args)
+    GenServer.start_link(__MODULE__, state, name: state[:name])
   end
 
-  def init(args) do
-    {:ok, watcher_pid} = FileSystem.start_link(args)
-    FileSystem.subscribe(watcher_pid)
-    {:ok, %{watcher_pid: watcher_pid}}
+  def init(%{folder_to_watch: dirs, name: name} = args) do
+    {:ok, watcher_pid} = FileSystem.start_link(dirs: [dirs], latency: 0)
+    :ok = FileSystem.subscribe(watcher_pid)
+    {:ok, args}
   end
 
-  def handle_info({:file_event, watcher_pid, {path, events}}, %{watcher_pid: watcher_pid} = state) do
+  def handle_info({:file_event, _, {path, events}}, %{handler: file_handler} = state) do
     # respond to renamed as well due to that some editors use temporary files for atomic writes (ex: TextMate)
-    if Enum.member?(events, :modified) || Enum.member?(events, :renamed) do
-      path |> normalize |> reload
+    if :modified in events or :renamed in events do
+      path
+      |> normalize
+      |> file_handler.()
     end
 
     {:noreply, state}
   end
 
-  defp reload(file) do
+  def reload(file) do
     if Path.extname(file) == ".ex" do
       try do
         file
