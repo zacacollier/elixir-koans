@@ -12,7 +12,7 @@ defmodule Watcher do
     GenServer.start_link(__MODULE__, state, name: state[:name])
   end
 
-  def init(%{folder_to_watch: dirs, name: name} = args) do
+  def init(%{folder_to_watch: dirs} = args) do
     {:ok, watcher_pid} = FileSystem.start_link(dirs: [dirs], latency: 0)
     :ok = FileSystem.subscribe(watcher_pid)
     {:ok, args}
